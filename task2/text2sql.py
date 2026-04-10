@@ -9,6 +9,7 @@ Text2SQL 模块 - 自然语言转SQL
 import re
 import json
 import pymysql
+import requests
 from typing import Optional, List, Dict, Any
 from config import DB_CONFIG, DATABASE_SCHEMA, MODEL_CONFIG
 from context_handler import ContextHandler
@@ -228,6 +229,161 @@ class DatabaseQuerier:
             print(f"SQL: {sql}")
             return None
 
+    def execute_query_with_retry(self, sql: str, max_retries: int = 2) -> Dict[str, Any]:
+        """
+        执行SQL，失败时尝试修正 (RSL-SQL风格)
+
+        Args:
+            sql: SQL语句
+            max_retries: 最大重试次数
+
+        Returns:
+            {"success": bool, "data": list, "sql": str, "error": str}
+        """
+        current_sql = sql
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                if self.connection is None:
+                    if not self.connect():
+                        return {"success": False, "error": "数据库连接失败", "sql": current_sql}
+
+                with self.connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                    cursor.execute(current_sql)
+                    result = cursor.fetchall()
+
+                    if attempt > 0:
+                        print(f"[SQL修正] 第 {attempt} 次修正成功!")
+
+                    return {
+                        "success": True,
+                        "data": result,
+                        "sql": current_sql,
+                        "original_sql": sql,
+                        "attempts": attempt + 1
+                    }
+
+            except Exception as e:
+                last_error = str(e)
+                error_type = type(e).__name__
+
+                if attempt < max_retries:
+                    print(f"[SQL修正] 尝试 {attempt + 1}/{max_retries}: {error_type}: {last_error[:100]}")
+                    # 尝试修正SQL
+                    fixed_sql = self._fix_sql_with_rules(current_sql, last_error, error_type)
+                    if fixed_sql and fixed_sql != current_sql:
+                        current_sql = fixed_sql
+                        print(f"[SQL修正] 修正后的SQL: {current_sql[:150]}...")
+                        continue
+                else:
+                    print(f"[SQL修正] 达到最大重试次数，放弃修正")
+
+        return {
+            "success": False,
+            "error": last_error,
+            "sql": current_sql,
+            "original_sql": sql
+        }
+
+    def _fix_sql_with_rules(self, broken_sql: str, error_msg: str, error_type: str) -> Optional[str]:
+        """
+        使用规则修正错误的SQL
+
+        Args:
+            broken_sql: 错误的SQL
+            error_msg: 错误信息
+            error_type: 错误类型
+
+        Returns:
+            修正后的SQL，或None
+        """
+        import re
+
+        sql = broken_sql.strip()
+
+        # 1. 修复列名不存在的问题
+        if "Unknown column" in error_msg:
+            # 提取不存在的列名
+            match = re.search(r"Unknown column '([^']+)'", error_msg)
+            if match:
+                bad_column = match.group(1)
+                print(f"[SQL修正] 检测到无效列名: {bad_column}")
+
+                # 尝试映射到正确的列名
+                column_mapping = {
+                    "net_profit": "net_profit_10k_yuan",
+                    "净利润": "net_profit_10k_yuan",
+                    "营业收入": "total_operating_revenue",
+                    "总资产": "asset_total_assets",
+                }
+
+                for wrong, correct in column_mapping.items():
+                    if wrong in bad_column:
+                        sql = sql.replace(bad_column, correct)
+                        print(f"[SQL修正] 列名映射: {wrong} -> {correct}")
+                        return sql
+
+        # 2. 修复表名不存在的问题
+        if "Table" in error_msg and "doesn't exist" in error_msg:
+            match = re.search(r"Table '([^']+)'", error_msg)
+            if match:
+                bad_table = match.group(1).split(".")[-1] if "." in match.group(1) else match.group(1)
+                print(f"[SQL修正] 检测到无效表名: {bad_table}")
+
+                # 表名映射
+                table_mapping = {
+                    "core_performance": "core_performance_indicators_sheet",
+                    "performance": "core_performance_indicators_sheet",
+                    "balance": "balance_sheet",
+                    "cash_flow": "cash_flow_sheet",
+                    "income": "income_sheet",
+                }
+
+                if bad_table in table_mapping:
+                    sql = sql.replace(bad_table, table_mapping[bad_table])
+                    print(f"[SQL修正] 表名映射: {bad_table} -> {table_mapping[bad_table]}")
+                    return sql
+
+        # 3. 修复引号问题
+        if error_type in ["SyntaxError", "ProgrammingError"] and "syntax" in error_msg.lower():
+            # 检查是否有未闭合的引号
+            if sql.count("'") % 2 != 0:
+                print(f"[SQL修正] 检测到未闭合的引号")
+                # 在末尾添加引号
+                sql = sql + "'"
+                return sql
+
+        # 4. 修复report_period值的问题
+        if "report_period" in error_msg.lower():
+            # 将中文报告期转换为英文代码
+            period_mapping = {
+                "年度": "FY",
+                "半年度": "HY",
+                "一季度": "Q1",
+                "三季报": "Q3",
+                "三季度": "Q3",
+            }
+
+            for chinese, english in period_mapping.items():
+                if f"'{chinese}" in sql or f'"{chinese}' in sql:
+                    sql = sql.replace(f"'{chinese}'", f"'{english}'")
+                    sql = sql.replace(f'"{chinese}"', f"'{english}'")
+                    print(f"[SQL修正] 报告期映射: {chinese} -> {english}")
+                    return sql
+
+        # 5. 移除多余的分号
+        if sql.count(";") > 1:
+            sql = sql.rstrip(";") + ";"
+            return sql
+
+        # 6. 检查是否缺少基本结构
+        if not sql.strip().upper().startswith("SELECT"):
+            print(f"[SQL修正] SQL不是以SELECT开头，尝试修复")
+            return None
+
+        return None
+
     def execute_sql_with_result(self, sql: str) -> Dict[str, Any]:
         """执行SQL并返回结构化结果"""
         result = self.execute_query(sql)
@@ -280,24 +436,24 @@ class Text2SQL:
             self._load_llm(model_path)
 
     def _load_llm(self, model_path: str):
-        """加载LLM模型"""
+        """验证llama-server连接"""
         try:
-            from transformers import AutoTokenizer, AutoModelForCausalLM
-            print(f"正在加载模型: {model_path}")
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_path, trust_remote_code=True, local_files_only=True
+            # 检查服务器是否可用
+            response = requests.get(
+                MODEL_CONFIG["llama_server_url"].replace("/v1/chat/completions", "/v1/models"),
+                timeout=5
             )
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_path,
-                torch_dtype="auto",
-                device_map="auto",
-                trust_remote_code=True,
-                local_files_only=True
-            )
-            print("[OK] 模型加载成功")
+            if response.status_code == 200:
+                print(f"[OK] llama-server连接成功")
+                print(f"    模型: {MODEL_CONFIG['model_name']}")
+                self.model = True  # 标记LLM可用
+            else:
+                print(f"[ERROR] llama-server响应异常: {response.status_code}")
+                self.use_llm = False
         except Exception as e:
-            print(f"[ERROR] 模型加载失败: {e}")
-            print("将使用规则生成器")
+            print(f"[ERROR] 无法连接到llama-server: {e}")
+            print("请确保 llama-server 已启动")
+            print(f"启动命令: ./llama-server.exe --model Qwen3.5/{MODEL_CONFIG['model_name']} --host 127.0.0.1 --port 8080 -t 4 -c 2048")
             self.use_llm = False
 
     def generate_sql(self, question: str) -> str:
@@ -316,15 +472,20 @@ class Text2SQL:
             return self.rule_generator.generate(question)
 
     def _llm_generate(self, question: str) -> str:
-        """使用LLM生成SQL"""
+        """使用LLM生成SQL（通过HTTP API）"""
         prompt = f"""根据以下数据库schema，将用户问题转换为MySQL查询语句。
 
 {DATABASE_SCHEMA}
 
 用户问题: {question}
-- 用户问题【未指定具体报告期】（如：2024年营收）→ 不添加 report_period 条件，仅按年份查询
-- 用户问题【明确指定】（如：2024年度/一季报）→ 再添加对应 report_period 条件
-只输出SQL语句，不要有其他内容:"""
+
+要求：
+1. 只输出SQL语句，不要有任何解释、说明、思考过程
+2. 直接输出SQL，不要用反引号包裹
+3. 用户问题【未指定具体报告期】（如：2024年营收）→ 不添加 report_period 条件，仅按年份查询
+4. 用户问题【明确指定】（如：2024年度/一季报）→ 添加对应 report_period 条件
+
+SQL:"""
 
         try:
             messages = [
@@ -332,23 +493,38 @@ class Text2SQL:
                 {"role": "user", "content": prompt}
             ]
 
-            text = self.tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
+            payload = {
+                "model": MODEL_CONFIG["model_name"],
+                "messages": messages,
+                "max_tokens": 512,
+                "temperature": 0.1,
+                "stream": False
+            }
+
+            response = requests.post(
+                MODEL_CONFIG["llama_server_url"],
+                json=payload,
+                timeout=60
             )
 
-            inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
-
-            generated_ids = self.model.generate(
-                inputs.input_ids,
-                max_new_tokens=512,
-                temperature=0.1,
-                do_sample=False
-            )
-
-            response = self.tokenizer.decode(generated_ids[0][inputs.input_ids.shape[1]:],
-                                            skip_special_tokens=True)
-
-            return self._extract_sql(response)
+            print(f"[DEBUG] API响应状态: {response.status_code}")
+            if response.status_code == 200:
+                result = response.json()
+                message = result["choices"][0]["message"]
+                # Qwen3.5 thinking模式可能把内容放在reasoning_content
+                content = message.get("content", "") or message.get("reasoning_content", "")
+                print(f"[DEBUG] 原始响应: {content[:200]}...")
+                # 清理thinking内容
+                if "<think>" in content:
+                    parts = content.split("</think>")
+                    content = parts[-1].strip()
+                    print(f"[DEBUG] 清理后内容: {content[:200]}...")
+                sql = self._extract_sql(content)
+                print(f"[DEBUG] 提取的SQL: {sql}")
+                return sql
+            else:
+                print(f"API错误: {response.status_code}")
+                return self.rule_generator.generate(question)
 
         except Exception as e:
             print(f"LLM生成失败: {e}，使用规则生成器")
@@ -357,16 +533,37 @@ class Text2SQL:
     def _extract_sql(self, response: str) -> str:
         """从响应中提取SQL"""
         response = response.strip()
-        for keyword in ["SELECT", "select"]:
-            idx = response.find(keyword)
-            if idx != -1:
-                sql = response[idx:]
-                for stop in ["```", "说明", "\n\n"]:
-                    stop_idx = sql.find(stop)
-                    if stop_idx != -1:
-                        sql = sql[:stop_idx]
-                return sql.strip()
-        return response
+
+        # 找到SELECT关键字
+        idx = response.lower().find("select")
+        if idx == -1:
+            return ""
+
+        sql = response[idx:]
+
+        # 提取SQL直到遇到：分号换行、中文、说明文字等
+        # 找到SQL结束位置（分号后换行或明确的中文说明）
+        lines = sql.split('\n')
+        clean_lines = []
+        for line in lines:
+            # 如果行以中文开头（说明是解释而不是SQL），停止
+            if line and '\u4e00' <= line[0] <= '\u9fff':
+                break
+            clean_lines.append(line)
+            # 如果行以分号结尾，认为是SQL结束
+            if line.strip().endswith(';'):
+                break
+
+        sql = '\n'.join(clean_lines).strip()
+
+        # 移除反引号
+        sql = sql.replace('`', '')
+
+        # 确保以分号结尾
+        if sql and not sql.strip().endswith(';'):
+            sql = sql + ';'
+
+        return sql
 
     def query(self, question: str, use_context: bool = True) -> Dict[str, Any]:
         """
@@ -419,7 +616,7 @@ class Text2SQL:
 # 测试
 if __name__ == "__main__":
     #t2s = Text2SQL(use_llm=False)
-    t2s = Text2SQL(use_llm=True, model_path=MODEL_CONFIG["model_path"])
+    t2s = Text2SQL(use_llm=True, model_path=MODEL_CONFIG["llama_server_url"])
     test_questions = [
         "金花股份2024年的营业收入是多少？",
         "华润三九2024年度的净利润是多少？",

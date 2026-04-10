@@ -3,6 +3,9 @@
 """
 import os
 
+# 项目根目录
+PROJECT_ROOT = r"C:\Users\34084\Desktop\teddy_cup"
+
 # 数据库配置
 DB_CONFIG = {
     "host": "localhost",
@@ -12,14 +15,20 @@ DB_CONFIG = {
     "charset": "utf8mb4"
 }
 
+# 研报数据路径
+#RESEARCH_REPORT_DIR = os.path.join(PROJECT_ROOT, "示例数据", "附件5：研报数据")
+
+# 研报PDF目录
+#STOCK_REPORTS_DIR = os.path.join(RESEARCH_REPORT_DIR, "个股研报")
+#INDUSTRY_REPORTS_DIR = os.path.join(RESEARCH_REPORT_DIR, "行业研报")
+
 # 模型配置
 MODEL_CONFIG = {
-    # 本地模型路径 (下载完成后使用)
-    "model_path": r"C:\Users\34084\Desktop\teddy_cup\task2\models\Qwen2.5-Coder-7B-Instruct\Qwen\Qwen2___5-Coder-7B-Instruct",
+    # 本地GGUF模型 (使用llama-server加载)
+    "model_name": "Qwen3.5-0.8B-Q4_K_M.gguf",
+    "llama_server_url": "http://127.0.0.1:8080/v1/chat/completions",
     # 备用: 使用在线模型
     "online_model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-    "device": "auto",  # auto, cpu, cuda
-    "torch_dtype": "auto"
 }
 #(如：2024年度, 2024年半年度, 2024年一季度, 2024年三季度)
 # 数据库Schema描述
