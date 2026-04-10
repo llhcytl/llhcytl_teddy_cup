@@ -1,0 +1,68 @@
+[
+  {
+    "id": "B2001",
+    "type": "多意图",
+    "results": [
+      {
+        "Q": "2024年利润最高的top10企业是哪些？这些企业的利润、销售额年同比是多少？年同比上涨幅度最大的是哪家企业？",
+        "A": {
+          "content": "查询结果 (6条记录):\n  [1] stock_abbr=华润三九, report_year=2024, report_period=FY, net_profit_10k_yuan=1363825963.61\n  [2] stock_abbr=华润三九, report_year=2024, report_period=HY\n  [3] stock_abbr=华润三九, report_year=2024, report_period=Q1, net_profit_10k_yuan=1363825963.61\n  [4] stock_abbr=华润三九, report_year=2024, report_period=Q3, net_profit_10k_yuan=561472731.39\n  [5] stock_abbr=金花股份, report_year=2024, report_period=Q1, net_profit_10k_yuan=23962427.14\n  ... 还有 1 条记录\n\n查询结果 (18条记录):\n  [1] stock_abbr=华润三九, report_year=2022, report_period=FY, net_profit_10k_yuan=838713628.38\n  [2] stock_abbr=华润三九, report_year=2023, report_period=FY, net_profit_10k_yuan=2852931664.85\n  [3] stock_abbr=华润三九, report_year=2023, report_period=HY\n  [4] stock_abbr=华润三九, report_year=2023, report_period=Q1\n  [5] stock_abbr=华润三九, report_year=2023, report_period=Q3\n  ... 还有 13 条记录\n\n查询结果 (18条记录):\n  [1] stock_abbr=华润三九, report_year=2022, report_period=FY, total_operating_revenue=4194386685.74, net_profit_10k_yuan=838713628.38\n  [2] stock_abbr=华润三九, report_year=2023, report_period=FY, total_operating_revenue=24738963319.76, net_profit_10k_yuan=2852931664.85\n  [3] stock_abbr=华润三九, report_year=2023, report_period=HY, total_operating_revenue=13146125695.07\n  [4] stock_abbr=华润三九, report_year=2023, report_period=Q1, total_operating_revenue=6352408318.71\n  [5] stock_abbr=华润三九, report_year=2023, report_period=Q3, total_operating_revenue=5461880259.08\n  ... 还有 13 条记录",
+          "image": [],
+          "references": []
+        }
+      }
+    ]
+  },
+  {
+    "id": "B2002",
+    "type": "意图模糊",
+    "results": [
+      {
+        "Q": "国家医保目录新增的中药产品有哪些",
+        "A": {
+          "content": "[Table_StockInfo] 买入\n2025年 10月 29日 （维持）\n证券研究报告•2025年三季报点评 当前价： 28.94元\n华润三九（000999）\n医药生物 目标价： ——元（6个月）\n内涵+外延双轮驱动，经营拐点已现\n投资要点 西南证券研究院\n[Ta b事le_件Su：m公ma司ry]发 布 2025年三季报。2025年前三季度，公司实现营业收入 219.9\n[分Ta析bl师e_：Au杜th向or阳]\n亿元，同比+11.4%；归母净利润 23.5亿元，同比-20.5%；扣非归母净利润\n执业证号：S1250520030002\n为 21.9亿元，同比-20.6%。2025年 Q1/Q2/Q3营收分别68.5/79.6/71.8亿\n电话：021-68416017\n元，分别同比-6%/+16.8%/+27.4%；归母净利润 12.7/5.5/5.4亿元，分别同 邮箱：duxy@swsc.com.cn\n比-6.9%/-47.3%/-4.3%；扣非归母净利润 12.2/4.8/4.9 亿元，分别同比\n联系人：王钰玮\n-8.3%/-51.1%/+10.1%，业绩符合预期。\n电话",
+          "image": [],
+          "references": []
+        }
+      }
+    ]
+  },
+  {
+    "id": "B2003",
+    "type": "归因分析",
+    "results": [
+      {
+        "Q": "华润三九近三年的主营业务收入情况做可视化绘图",
+        "A": {
+          "content": "未找到相关信息",
+          "image": [],
+          "references": []
+        }
+      },
+      {
+        "Q": "主营业务收入上升的原因是什么",
+        "A": {
+          "content": "查询结果 (18条记录):\n  [1] stock_abbr=华润三九, report_year=2022, report_period=FY, total_operating_revenue=4194386685.74\n  [2] stock_abbr=华润三九, report_year=2023, report_period=FY, total_operating_revenue=24738963319.76\n  [3] stock_abbr=华润三九, report_year=2023, report_period=HY, total_operating_revenue=13146125695.07\n  [4] stock_abbr=华润三九, report_year=2023, report_period=Q1, total_operating_revenue=6352408318.71\n  [5] stock_abbr=华润三九, report_year=2023, report_period=Q3, total_operating_revenue=5461880259.08\n  ... 还有 13 条记录\n\n的财务数据出现下降，主要原因可能包括：\n1. 市场竞争加剧导致价格压力；\n2. 原材料成本上升压缩利润空间；\n3. 市场需求阶段性波动。",
+          "image": [],
+          "references": [
+            {
+              "paper_path": "./示例数据\\附件5：研报数据\\个股研报\\2025年三季报点评：内涵+外延双轮驱动，经营拐点已现.pdf",
+              "text": "[Ta b事le_件Su：m公ma司ry]发 布 2025年三季报。2025年前三季度，公司实现营业收入 219.9 亿元，同比+11.4%；归母净利润 23.5亿元，同比-20.5%；扣非归母净利润 元，分别同比-6%/+16.8%/+27.4%；归母净利润 12.7/5.5/5.4亿元，分别同 邮箱：duxy@swsc.com.cn",
+              "paper_image": ""
+            },
+            {
+              "paper_path": "./示例数据\\附件5：研报数据\\个股研报\\2025年三季报点评：内涵+外延双轮驱动，经营拐点已现.pdf",
+              "text": " 内生业务环比增长，处方药逐步恢复。2025 年前三季度，公司实现营业收 邮箱：wangyuwei@swsc.com.cn 别同比-6%/+16.8%/+27.4%，其中内生业务三季度环比增长。1）CHC领域，",
+              "paper_image": ""
+            },
+            {
+              "paper_path": "./示例数据\\附件5：研报数据\\个股研报\\2025年三季报点评：内涵+外延双轮驱动，经营拐点已现.pdf",
+              "text": "0 00999）：业绩稳健增长，并",
+              "paper_image": ""
+            }
+          ]
+        }
+      }
+    ]
+  }
+]
